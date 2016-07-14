@@ -36,9 +36,9 @@ RUN sed -i 's/<password_web>/'$(cat /tmp/pass_web)'/g' /var/www/html/db.php
 RUN \
     /bin/bash -c "usr/bin/mysqld_safe &" && \
     sleep 5 && \
-    mysql -u root  < /tmp/db.sql 
-#    rm /tmp/db.sql && \ 
-#    rm /tmp/pass_web && \
-#    rm /tmp/pass_root     
+    mysql -u root  < /tmp/db.sql && \
+    rm /tmp/db.sql && \ 
+    rm /tmp/pass_web && \
+    rm /tmp/pass_root     
 
 
