@@ -3,42 +3,44 @@ FROM richarvey/nginx-php-fpm
 MAINTAINER Zane Durkin <zane@zemptech.com>
 
 RUN \
-    apt-get update --fix-missing && \
-    apt-get install -y mysql-server
+    apk update && \
+    apk add mariadb && \
+    apk add mariadb-client && \
+    apk add mariadb-dev && \
+    apk add openssl
 
-# set up nginx 
-RUN sed -i 's/root \/usr\/share\/nginx\/html/root \/var\/www\/html/g' /etc/nginx/sites-enabled/default.conf 
-RUN rm /var/www/html/*
+RUN echo "[include]" >> /etc/supervisord.conf && \
+    echo "files = /etc/supervisor/conf.d/*.conf" >> /etc/supervisord.conf
 
-# create mysql password for root and set to /tmp/pass_root file
+COPY other/mysql.conf /etc/supervisor/conf.d/
+
 RUN \
     export MYSQL_PASS=$(openssl rand -hex 100) && \
-    echo $MYSQL_PASS > /tmp/pass_root && \
+    echo $MYSQL_PASS > /root/pass_root && \
     export MYSQL_PASS=$(openssl rand -hex 100) && \
-    echo $MYSQL_PASS > /tmp/pass_web
+    echo $MYSQL_PASS > /root/pass_web
 
-# copy db.sql file 
-COPY other/db.sql /tmp/db.sql
+COPY other/db.sql /root/db.sql
 
-# final edit db.sql file with passwords
 RUN \
-    sed -i 's/<password_web>/'$(cat /tmp/pass_web)'/g' /tmp/db.sql && \
-    sed -i 's/<password_root>/'$(cat /tmp/pass_root)'/g' /tmp/db.sql
+    sed -i 's/<password_web>/'$(cat /root/pass_web)'/g' /root/db.sql && \
+    sed -i 's/<password_root>/'$(cat /root/pass_root)'/g' /root/db.sql
 
-# set up config and import files
-COPY other/supervisord.conf /etc/
-COPY web/ /var/www/html/
-
-# set up php file with password
-RUN sed -i 's/<password_web>/'$(cat /tmp/pass_web)'/g' /var/www/html/db.php
-
-# setup database
 RUN \
+    mysql_install_db --user=mysql && \
     /bin/bash -c "usr/bin/mysqld_safe &" && \
     sleep 5 && \
-    mysql -u root  < /tmp/db.sql && \
-    rm /tmp/db.sql && \ 
-    rm /tmp/pass_web && \
-    rm /tmp/pass_root     
+    mysql -u root  < /root/db.sql
 
+RUN rm /var/www/html/*
+
+COPY web /var/www/html
+
+# set up php file with password
+RUN sed -i 's/<password_web>/'$(cat /root/pass_web)'/g' /var/www/html/db.php
+
+RUN \
+    rm /root/db.sql && \
+    rm /root/pass_web && \
+    rm /root/pass_root
 
