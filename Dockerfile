@@ -32,7 +32,9 @@ RUN \
     sleep 5 && \
     mysql -u root  < /root/db.sql
 
-RUN rm /var/www/html/*
+RUN \
+    sed -i 's/mysqli.default_socket=/mysqli.default_socket=\/run\/mysqld\/mysqld.sock/' /etc/php5/conf.d/php.ini && \
+    rm /var/www/html/*
 
 COPY web /var/www/html
 
